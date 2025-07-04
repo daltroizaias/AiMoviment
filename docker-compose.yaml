@@ -1,0 +1,17 @@
+services:
+  
+  movimentai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: movimentai:latest
+    container_name: movimentai_container
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+    command: gunicorn --bind
+

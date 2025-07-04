@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Análise de Movimento{% endblock %}
+
+{% block content %}
+<div class="center-container">
+    <h2>Vídeo Processado com Pose Estimation</h2>
+    <video controls autoplay width="640">
+        <source src="{{ video_url }}" type="video/mp4">
+        Seu navegador não suporta o elemento de vídeo.
+    </video>
+
+    <div class="controls">
+        <a href="{{ url_for('main.process_video', filename='exemplo.mp4') }}" class="btn">
+            Processar Vídeo Novamente
+        </a>
+    </div>
+</div>
+{% endblock %}
