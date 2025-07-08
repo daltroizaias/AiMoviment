@@ -1,6 +1,3 @@
-import os
-from typing import Optional
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,8 +12,6 @@ class Config(BaseSettings):
     FLASK_PORT: int
     FLASK_DEBUG: int
     SECRET_KEY: str
-    MODELS_TRAINED: str
-    VIDEO_URL: str
 
 
-configuracao = Config()
+app_config = Config()
