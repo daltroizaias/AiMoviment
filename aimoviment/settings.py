@@ -9,7 +9,7 @@ class Config(BaseSettings):
     )
 
     # === Variáveis do .env ===
-    FLASK_PORT: int
+    FLASK_PORT: int = 8000
     FLASK_DEBUG: int
     SECRET_KEY: str
 

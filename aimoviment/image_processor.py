@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import cv2
 import mediapipe as mp
@@ -136,7 +136,7 @@ class ImageProcessor:
 
     def _process_frame(
         self, frame: cv2.Mat, scale_percent: float = 0.5, rotate: bool = False
-    ) -> cv2.Mat:
+    ) -> Tuple[cv2.Mat, mp.solutions.pose.PoseLandmark]:
         """Processa um frame completo: rotaciona, redimensiona e detecta pose.
 
         Args:
@@ -168,7 +168,7 @@ class ImageProcessor:
                 *self.drawing_specs,
             )
 
-        return frame_resized
+        return frame_resized, landmarks
 
     def run(
         self,
@@ -194,7 +194,7 @@ class ImageProcessor:
                 processed_frame = self._process_frame(
                     frame, scale_percent, rotate
                 )
-                cv2.imshow('Pose Detection', processed_frame)
+                cv2.imshow('Pose Detection', processed_frame[0])
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -203,139 +203,21 @@ class ImageProcessor:
             self.pose.close()
             cv2.destroyAllWindows()
 
-    def save(
-        self,
-        output_path: Optional[str] = None,
-        return_frames: bool = False,
-        web_cam: bool = False,
-        scale_percent: float = 0.5,
-        rotate: bool = False,
-    ) -> Union[None, List[np.ndarray]]:
-        """Processa e salva o vídeo ou retorna frames processados em memória.
+    def process_frame(
+            self,
+            frame: np.ndarray,
+            scale_percent: float = 0.5,
+            rotate: bool = False
+        ) -> np.ndarray:
+        """
+        Processa um único frame e retorna o frame com os landmarks desenhados.
 
         Args:
-            output_path: Caminho para salvar o vídeo. Se None, não salva em disco.
-            return_frames: Se True, retorna os frames processados em memória.
-            web_cam: Se True, captura da webcam. Se False, usa file_path.
-            scale_percent: Percentual de redimensionamento dos frames.
-            rotate: Se True, rotaciona os frames 90° no sentido horário.
+            frame: Imagem em BGR (cv2).
+            scale_percent: Escala para redimensionamento.
+            rotate: Se True, rotaciona o frame em 90°.
 
         Returns:
-            Se return_frames=True, retorna lista de frames processados.
-            Caso contrário, retorna None.
-
-        Raises:
-            ValueError: Se ambos output_path e return_frames forem False.
-            IOError: Se não conseguir criar o arquivo de vídeo.
+            Tuple(Frame com landmarks desenhados, landmarks).
         """
-        if not output_path and not return_frames:
-            raise ValueError(
-                'Deve especificar output_path ou setar return_frames=True'
-            )
-
-        cap = self._get_video_source(web_cam)
-        frames = []
-
-        # Configuração do VideoWriter se for salvar em disco
-        if output_path:
-            # Obter dimensões do primeiro frame processado
-            ret, frame = cap.read()
-            if not ret:
-                raise IOError('Não foi possível ler o primeiro frame')
-
-            sample_frame = self._process_frame(frame, scale_percent, rotate)
-            height, width = sample_frame.shape[:2]
-
-            # Criar VideoWriter
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(output_path, fourcc, 30.0, (width, height))
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Voltar ao início
-
-        try:
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                processed_frame = self._process_frame(
-                    frame, scale_percent, rotate
-                )
-
-                if output_path:
-                    out.write(processed_frame)
-
-                if return_frames:
-                    frames.append(processed_frame)
-
-        finally:
-            cap.release()
-            if output_path:
-                out.release()
-            self.pose.close()
-
-        return frames if return_frames else None
-
-    def run_and_save(
-        self,
-        output_path: Optional[str] = None,
-        show_preview: bool = True,
-        web_cam: bool = False,
-        scale_percent: float = 0.5,
-        rotate: bool = False,
-    ) -> Union[None, List[np.ndarray]]:
-        """Versão combinada de run() e save() que mostra preview enquanto processa.
-
-        Args:
-            output_path: Caminho para salvar o vídeo. Se None, não salva em disco.
-            show_preview: Se True, mostra uma janela com o preview.
-            web_cam: Se True, captura da webcam. Se False, usa file_path.
-            scale_percent: Percentual de redimensionamento dos frames.
-            rotate: Se True, rotaciona os frames 90° no sentido horário.
-
-        Returns:
-            Lista de frames processados se output_path=None, senão None.
-        """
-        cap = self._get_video_source(web_cam)
-        frames = []
-
-        # Configuração do VideoWriter se for salvar em disco
-        if output_path:
-            ret, frame = cap.read()
-            if not ret:
-                raise IOError('Não foi possível ler o primeiro frame')
-
-            sample_frame = self._process_frame(frame, scale_percent, rotate)
-            height, width = sample_frame.shape[:2]
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(output_path, fourcc, 30.0, (width, height))
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-
-        try:
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                processed_frame = self._process_frame(
-                    frame, scale_percent, rotate
-                )
-
-                if output_path:
-                    out.write(processed_frame)
-
-                frames.append(processed_frame)
-
-                if show_preview:
-                    cv2.imshow('Pose Detection - Preview', processed_frame)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-
-        finally:
-            cap.release()
-            if output_path:
-                out.release()
-            if show_preview:
-                cv2.destroyAllWindows()
-            self.pose.close()
-
-        return frames if not output_path else None
+        return self._process_frame(frame, scale_percent=scale_percent, rotate=rotate)

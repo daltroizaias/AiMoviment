@@ -1,19 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Análise de Movimento{% endblock %}
+{% block title %}Análise de Movimento em Tempo Real{% endblock %}
 
 {% block content %}
 <div class="center-container">
-    <h2>Vídeo Processado com Pose Estimation</h2>
-    <video controls autoplay width="640">
-        <source src="{{ video_url }}" type="video/mp4">
-        Seu navegador não suporta o elemento de vídeo.
-    </video>
+    <h2>Detecção de Pose com MediaPipe</h2>
 
-    <div class="controls">
-        <a href="{{ url_for('main.process_video', filename='exemplo.mp4') }}" class="btn">
-            Processar Vídeo Novamente
-        </a>
+    <!-- Mostra imagem processada com landmarks -->
+    <img id="frame-processado" width="640" height="480" alt="Frame com pose detectada">
+    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+
+    <p id="plano" style="margin-top: 10px;">Plano: aguardando...</p>
+
+    <div class="controls" style="margin-top: 20px;">
+        <a href="{{ url_for('main.index') }}" class="btn">Recarregar</a>
     </div>
 </div>
+
+<script src="{{ url_for('static', filename='camera.js') }}"></script>
 {% endblock %}

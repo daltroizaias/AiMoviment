@@ -1,33 +1,43 @@
-import os
+from flask import Blueprint, render_template, request, jsonify
+import cv2
+import numpy as np
+from base64 import b64encode
 
-from flask import Blueprint, redirect, render_template, url_for
-
-from aimoviment.settings import app_config
-from aimoviment.skeleton import ImageProcessor
+from aimoviment.goniometry import PoseAnalyzer
+from aimoviment.image_processor import ImageProcessor, PoseConfig
 
 main = Blueprint('main', __name__)
 
+pose_config = PoseConfig(
+    min_detection_confidence=0.6,
+    min_tracking_confidence=0.6,
+    model_complexity=0,
+)
 
 @main.route('/')
 def index():
-    video_file = 'C:\\Users\\daltr\\OneDrive\\Repositorio GIT\\AiMoviment\\aimoviment\\static\\videos\\20250701_124007000_iOS.MOV'  # noqa: E501
-    processed_file = 'processed_' + video_file
-    processed_path = os.path.join(app_config.VIDEO_FOLDER, processed_file)
+    return render_template('index.html')
 
-    # Processa o vídeo se ainda não estiver feito
-    if not os.path.exists(processed_path):
-        processor = ImageProcessor(video_file)
-        processor.process_and_save()
+@main.route('/video_feed', methods=['POST'])
+def video_feed():
+    if 'image' not in request.files:
+        return jsonify({'error': 'Arquivo de imagem não enviado'}), 400
 
-    video_url = url_for(
-        'static', filename=os.path.join(app_config.VIDEO_URL, processed_file)
-    )  # noqa: E501
-    return render_template('index.html', video_url=video_url)
+    file = request.files['image']
+    file_bytes = np.frombuffer(file.read(), np.uint8)
+    frame = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
+    image_processor = ImageProcessor(pose_config=pose_config)
+    frame_processed, landmarks = image_processor.process_frame(frame)
 
-@main.route('/process/<filename>')
-def process_video(filename):
-    processor = ImageProcessor(filename)
-    processor.process_and_save()
+    # Compactar imagem com qualidade reduzida
+    encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
+    _, buffer = cv2.imencode('.jpg', frame_processed, encode_params)
+    frame_base64 = b64encode(buffer).decode('utf-8')
 
-    return redirect(url_for('main.index'))
+    if landmarks:
+        analyser = PoseAnalyzer(landmarks)
+        plano = analyser.detectar_plano_movimento()
+        return jsonify({'status': 'ok', 'plano': plano, 'frame_base64': frame_base64})
+    else:
+        return jsonify({'status': 'ok', 'plano': None, 'frame_base64': frame_base64})
